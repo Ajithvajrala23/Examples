@@ -2,7 +2,7 @@ from oauth2client.client import GoogleCredentials
 import googleapiclient.discovery
 
 # Change this values to match your project
-PROJECT_ID = "tensorflow-class-170621"
+PROJECT_ID = "keras-class"
 MODEL_NAME = "earnings"
 CREDENTIALS_FILE = "credentials.json"
 
