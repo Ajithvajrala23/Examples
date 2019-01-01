@@ -34,6 +34,7 @@ X_scaled_testing = X_scaler.transform(X_testing)
 Y_scaled_testing = Y_scaler.transform(Y_testing)
 
 # Define model parameters
+RUN_NAME = "histogram_visualization"
 learning_rate = 0.001
 training_epochs = 100
 
@@ -50,7 +51,7 @@ layer_3_nodes = 50
 
 # Input Layer
 with tf.variable_scope('input'):
-    X = tf.placeholder(tf.float32, shape=(None, number_of_inputs))
+    X = tf.placeholder(tf.float32, shape=(None, number_of_inputs), name="X")
 
 # Layer 1
 with tf.variable_scope('layer_1'):
@@ -76,10 +77,10 @@ with tf.variable_scope('output'):
     biases = tf.get_variable(name="biases4", shape=[number_of_outputs], initializer=tf.zeros_initializer())
     prediction = tf.matmul(layer_3_output, weights) + biases
 
-# Section Two: Define the cost function of the neural network that will measure prediction accuracy during training
+# Section Two: Define the cost function of the neural network that will be optimized during training
 
 with tf.variable_scope('cost'):
-    Y = tf.placeholder(tf.float32, shape=(None, 1))
+    Y = tf.placeholder(tf.float32, shape=(None, 1), name="Y")
     cost = tf.reduce_mean(tf.squared_difference(prediction, Y))
 
 # Section Three: Define the optimizer function that will be run to optimize the neural network
@@ -90,8 +91,8 @@ with tf.variable_scope('train'):
 # Create a summary operation to log the progress of the network
 with tf.variable_scope('logging'):
     tf.summary.scalar('current_cost', cost)
+    tf.summary.histogram('predicted_value', prediction)
     summary = tf.summary.merge_all()
-
 
 # Initialize a session so that we can run TensorFlow operations
 with tf.Session() as session:
@@ -101,8 +102,8 @@ with tf.Session() as session:
 
     # Create log file writers to record training progress.
     # We'll store training and testing log data separately.
-    training_writer = tf.summary.FileWriter("./logs/training", session.graph)
-    testing_writer = tf.summary.FileWriter("./logs/testing", session.graph)
+    training_writer = tf.summary.FileWriter("./logs/{}/training".format(RUN_NAME), session.graph)
+    testing_writer = tf.summary.FileWriter("./logs/{}/testing".format(RUN_NAME), session.graph)
 
     # Run the optimizer over and over to train the network.
     # One epoch is one full run through the training data set.
@@ -111,16 +112,15 @@ with tf.Session() as session:
         # Feed in the training data and do one step of neural network training
         session.run(optimizer, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
 
-        # Every 5 training steps, log our progress
+        # Every few training steps, log our progress
         if epoch % 5 == 0:
             # Get the current accuracy scores by running the "cost" operation on the training and test data sets
-            training_cost, training_summary = session.run([cost, summary], feed_dict={X: X_scaled_training, Y: Y_scaled_training})
-            testing_cost, testing_summary = session.run([cost, summary], feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
+            training_cost, training_summary = session.run([cost, summary], feed_dict={X: X_scaled_training, Y:Y_scaled_training})
+            testing_cost, testing_summary = session.run([cost, summary], feed_dict={X: X_scaled_testing, Y:Y_scaled_testing})
 
             # Write the current training status to the log files (Which we can view with TensorBoard)
             training_writer.add_summary(training_summary, epoch)
             testing_writer.add_summary(testing_summary, epoch)
-
 
             # Print the current training status to the screen
             print("Epoch: {} - Training Cost: {}  Testing Cost: {}".format(epoch, training_cost, testing_cost))
@@ -133,16 +133,3 @@ with tf.Session() as session:
 
     print("Final Training cost: {}".format(final_training_cost))
     print("Final Testing cost: {}".format(final_testing_cost))
-
-    # Now that the neural network is trained, let's use it to make predictions for our test data.
-    # Pass in the X testing data and run the "prediciton" operation
-    Y_predicted_scaled = session.run(prediction, feed_dict={X: X_scaled_testing})
-
-    # Unscale the data back to it's original units (dollars)
-    Y_predicted = Y_scaler.inverse_transform(Y_predicted_scaled)
-
-    real_earnings = test_data_df['total_earnings'].values[0]
-    predicted_earnings = Y_predicted[0][0]
-
-    print("The actual earnings of Game #1 were ${}".format(real_earnings))
-    print("Our neural network predicted earnings of ${}".format(predicted_earnings))

@@ -92,47 +92,25 @@ with tf.variable_scope('logging'):
     tf.summary.scalar('current_cost', cost)
     summary = tf.summary.merge_all()
 
+saver = tf.train.Saver()
 
 # Initialize a session so that we can run TensorFlow operations
 with tf.Session() as session:
 
-    # Run the global variable initializer to initialize all variables and layers of the neural network
-    session.run(tf.global_variables_initializer())
+    # When loading from a checkpoint, don't initialize the variables!
+    # session.run(tf.global_variables_initializer())
 
-    # Create log file writers to record training progress.
-    # We'll store training and testing log data separately.
-    training_writer = tf.summary.FileWriter("./logs/training", session.graph)
-    testing_writer = tf.summary.FileWriter("./logs/testing", session.graph)
+    # Instead, load them from disk:
+    saver.restore(session, "logs/trained_model.ckpt")
 
-    # Run the optimizer over and over to train the network.
-    # One epoch is one full run through the training data set.
-    for epoch in range(training_epochs):
-
-        # Feed in the training data and do one step of neural network training
-        session.run(optimizer, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
-
-        # Every 5 training steps, log our progress
-        if epoch % 5 == 0:
-            # Get the current accuracy scores by running the "cost" operation on the training and test data sets
-            training_cost, training_summary = session.run([cost, summary], feed_dict={X: X_scaled_training, Y: Y_scaled_training})
-            testing_cost, testing_summary = session.run([cost, summary], feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
-
-            # Write the current training status to the log files (Which we can view with TensorBoard)
-            training_writer.add_summary(training_summary, epoch)
-            testing_writer.add_summary(testing_summary, epoch)
-
-
-            # Print the current training status to the screen
-            print("Epoch: {} - Training Cost: {}  Testing Cost: {}".format(epoch, training_cost, testing_cost))
-
-    # Training is now complete!
+    print("Trained model loaded from disk.")
 
     # Get the final accuracy scores by running the "cost" operation on the training and test data sets
-    final_training_cost = session.run(cost, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
-    final_testing_cost = session.run(cost, feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
+    training_cost = session.run(cost, feed_dict={X: X_scaled_training, Y: Y_scaled_training})
+    testing_cost = session.run(cost, feed_dict={X: X_scaled_testing, Y: Y_scaled_testing})
 
-    print("Final Training cost: {}".format(final_training_cost))
-    print("Final Testing cost: {}".format(final_testing_cost))
+    print("Final Training cost: {}".format(training_cost))
+    print("Final Testing cost: {}".format(testing_cost))
 
     # Now that the neural network is trained, let's use it to make predictions for our test data.
     # Pass in the X testing data and run the "prediciton" operation
